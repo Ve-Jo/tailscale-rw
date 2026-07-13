@@ -46,24 +46,35 @@ ts() { tailscale --socket=/var/run/tailscale/tailscaled.sock "$@"; }
 # --- Detect this environment's private subnets --------------------------------
 # The kernel route table already holds the connected networks in network form,
 # so no address arithmetic is needed. Railway private networking is ULA IPv6
-# (fd00::/8); the connected /64 covers every service in the environment.
+# (fd00::/8); environments created after 2025-10 are dual-stack and add private
+# IPv4 (10.x) — some services there (e.g. Railway's database templates) only
+# accept IPv4, and clients prefer A records, so both families are advertised.
 ROUTES=()
 while IFS= read -r net; do
   ROUTES+=("$net")
-done < <(ip -6 route show | awk '$1 ~ /^fd/ && $1 ~ /\// {print $1}' | sort -u)
+done < <(
+  {
+    ip -6 route show | awk '$1 ~ /^fd/ && $1 ~ /\// {print $1}'
+    ip -4 route show | awk '($1 ~ /^10\./ || $1 ~ /^172\.(1[6-9]|2[0-9]|3[01])\./ || $1 ~ /^192\.168\./) && $1 ~ /\// {print $1}'
+  } | sort -u
+)
 
-# Railway's internal DNS resolver may live outside the connected /64 — advertise
-# it as a host route so tailnet split DNS can reach it (overlap is harmless).
-# Skip that advertisement on aliased nodes: every environment exposes the SAME
-# resolver address (fd12::10), so a second node advertising it would fail over
-# with the first; the alias's CoreDNS reaches the resolver locally instead.
-DNS_V6=()
+# Railway's internal DNS resolver may live outside the connected subnets —
+# advertise it as a host route so tailnet split DNS can reach it (overlap is
+# harmless). Skip that advertisement on aliased nodes: every environment exposes
+# the SAME resolver address (fd12::10), so a second node advertising it would
+# fail over with the first; the alias's CoreDNS reaches the resolver locally.
+DNS_INT=()
 DNS_OTHER=()
 while IFS= read -r ns; do
   case "$ns" in
     fd*)
       [ -z "$ALIAS_SUFFIX" ] && ROUTES+=("${ns}/128")
-      DNS_V6+=("$ns")
+      DNS_INT+=("$ns")
+      ;;
+    10.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*|192.168.*)
+      [ -z "$ALIAS_SUFFIX" ] && ROUTES+=("${ns}/32")
+      DNS_INT+=("$ns")
       ;;
     *) DNS_OTHER+=("$ns") ;;
   esac
@@ -123,8 +134,8 @@ done
 # back. Point tailnet split DNS for the alias suffix at THIS node's tailnet IP.
 COREDNS_PID=""
 if [ -n "$ALIAS_SUFFIX" ]; then
-  if [ "${#DNS_V6[@]}" -eq 0 ]; then
-    echo "WARNING: DNS alias ${ALIAS_SUFFIX} requested but no ULA resolver found — alias disabled." >&2
+  if [ "${#DNS_INT[@]}" -eq 0 ]; then
+    echo "WARNING: DNS alias ${ALIAS_SUFFIX} requested but no private-network resolver found — alias disabled." >&2
   else
     cat > /app/Corefile <<EOF
 ${ALIAS_SUFFIX}:53 {
@@ -134,7 +145,7 @@ ${ALIAS_SUFFIX}:53 {
         name suffix ${ALIAS_SUFFIX}. railway.internal.
         answer auto
     }
-    forward . ${DNS_V6[*]}
+    forward . ${DNS_INT[*]}
 }
 EOF
     coredns -conf /app/Corefile &
@@ -157,13 +168,13 @@ if [ -n "$COREDNS_PID" ]; then
   echo "       ${ALIAS_SUFFIX} -> $(ts ip -4 2>/dev/null | head -1)"
   echo "     NOTE: an ephemeral node gets a fresh tailnet IP on redeploy, which breaks"
   echo "     this entry. Attach a Railway volume at /var/lib/tailscale for a stable IP."
-elif [ "${#DNS_V6[@]}" -gt 0 ]; then
+elif [ "${#DNS_INT[@]}" -gt 0 ]; then
   echo "  2. Split DNS (DNS -> Nameservers -> Custom, restrict to search domain):"
-  for ns in "${DNS_V6[@]}"; do
+  for ns in "${DNS_INT[@]}"; do
     echo "       railway.internal -> ${ns}"
   done
 else
-  echo "  2. WARNING: no ULA IPv6 resolver in /etc/resolv.conf (found: ${DNS_OTHER[*]:-none})."
+  echo "  2. WARNING: no private-network resolver in /etc/resolv.conf (found: ${DNS_OTHER[*]:-none})."
   echo "     Split DNS cannot point at a loopback/link-local resolver; reach services"
   echo "     by their private IPv6 address instead."
 fi

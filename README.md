@@ -16,9 +16,10 @@ Mac ──tailnet──> tailscale-rw node ──forwards packets──> fd12:�
 ```
 
 The container runs `tailscaled` in userspace-networking mode (Railway provides no
-`/dev/net/tun`) and advertises the environment's private IPv6 `/64`, which it
-detects at runtime from the route table — nothing is hardcoded, so the same image
-works in any project/environment. New services are reachable the moment they
+`/dev/net/tun`) and advertises the environment's private subnets — the IPv6 `/64`,
+plus the private IPv4 ranges in dual-stack environments (created after Oct 2025) —
+which it detects at runtime from the route table — nothing is hardcoded, so the
+same image works in any project/environment. New services are reachable the moment they
 deploy; no per-service configuration.
 
 ## Environment variables (Railway service)
@@ -131,6 +132,15 @@ Exit Nodes on the client, and all your traffic egresses via Railway.
   redeploy. Service traffic is unaffected — services live in the env-unique
   `/64`.
 
+- **Dual-stack environments: don't skip the IPv4 routes.** Environments created
+  after Oct 2025 resolve service names to private IPv4 (`10.x`) **and** IPv6.
+  Some services there only accept IPv4 — Railway's own database templates, for
+  example, *accept* an IPv6 connection and then immediately reset it — and most
+  clients try the A record first. The node advertises both families for this
+  reason. Two consequences: IPv4 prefixes are likelier to collide across
+  projects (same HA-flap as above → `TS_SKIP_ROUTES`), and if your LAN uses an
+  overlapping `10.x` range, skip the offending route.
+
 - **The resolver `/128` belongs to exactly one node.** Every environment exposes
   its DNS resolver at the *same* `fd12::10`. Only plain-mode nodes
   (`TS_DNS_ALIAS_SUFFIX=none`) advertise it; run at most one plain-mode node per
@@ -179,5 +189,9 @@ work; pick this to make whole projects reachable by real names, any protocol.
   Sanity-check the routed path first with a raw IPv6 from the boot summary.
 - **Names resolve but connections hang** → routes not approved (step 2), or the
   client has subnet routes disabled.
+- **One specific service doesn't resolve, others do** → its private DNS name is
+  fixed at creation and does NOT follow a rename (and underscores in display
+  names are never valid DNS). Check the service's `RAILWAY_PRIVATE_DOMAIN`
+  variable — use the label in front of `.railway.internal` with your alias suffix.
 - **Node missing from the tailnet** → check deploy logs; a missing/expired
   `TAILSCALE_AUTHKEY` prints an explicit error and exits after 30s.
