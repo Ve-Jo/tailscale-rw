@@ -111,6 +111,10 @@ Tighten further with Tailscale ACLs on `tag:railway` if needed.
 As an exit node (`TS_EXIT_NODE=true` + approval): pick the node under
 Exit Nodes on the client, and all your traffic egresses via Railway.
 
+On macOS there's a companion **Raycast extension** in [`raycast/`](raycast/):
+it lists every service in your routed environments and opens/copies its
+private URL (host, port and connection string included).
+
 ## Caveats & known failure modes
 
 - **Route collision / HA-flap between projects.** When two nodes advertise the

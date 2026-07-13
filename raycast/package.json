@@ -1,0 +1,55 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "railway-tailscale",
+  "title": "Railway Tailscale Services",
+  "description": "Browse Railway services reachable over your tailnet through a tailscale-rw subnet router, and open their private URLs.",
+  "icon": "icon.png",
+  "author": "dotlouis",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "browse-services",
+      "title": "Browse Railway Services",
+      "subtitle": "Tailscale",
+      "description": "List Railway services reachable over the tailnet and open their private URLs.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "railwayApiToken",
+      "type": "password",
+      "required": true,
+      "title": "Railway API Token",
+      "description": "Account (or team) token from railway.com/account/tokens. Used read-only to list projects, services and their private domains.",
+      "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    },
+    {
+      "name": "showUnrouted",
+      "type": "checkbox",
+      "required": false,
+      "default": false,
+      "title": "Environments",
+      "label": "Show environments without a Tailscale router",
+      "description": "Also list services in environments where no tailscale-rw subnet router was detected. Their hosts are computed with the default alias suffix but are only reachable once a router is deployed there."
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.100.3",
+    "@raycast/utils": "^1.19.1"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}
