@@ -1,6 +1,6 @@
 # tailscale-rw
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/qJHwy-)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/tailscale-subnet-router)
 
 A Tailscale **subnet router** for a Railway project: deploy it as a service in any
 Railway environment and every other service in that environment becomes reachable
