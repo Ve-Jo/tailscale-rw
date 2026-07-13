@@ -70,7 +70,10 @@ Caveats:
 
    ```jsonc
    "autoApprovers": {
-     "routes":   { "fd00::/8": ["tag:railway"] },
+     "routes": {
+       "fd00::/8":    ["tag:railway"],
+       "10.0.0.0/8":  ["tag:railway"]   // dual-stack (post-Oct-2025) environments
+     },
      "exitNode": ["tag:railway"]   // only if you use TS_EXIT_NODE=true
    }
    ```
