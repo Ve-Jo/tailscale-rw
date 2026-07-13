@@ -113,13 +113,20 @@ Exit Nodes on the client, and all your traffic egresses via Railway.
 
 ## Caveats & known failure modes
 
-- **Route collision / HA-flap between projects.** Tailscale treats two nodes
-  advertising the *same* prefix as a high-availability pair: one is primary, the
-  other idle. Each Railway environment's service subnet is a unique random `/64`,
-  so those never collide — but environments can also carry **shared infra
-  prefixes** (observed: `fd12:0:8::/64`, alongside the env-unique
+- **Route collision / HA-flap between projects.** When two nodes advertise the
+  *same* prefix, Tailscale treats them as a high-availability pair: one is
+  primary, the other a standby that takes over if the primary goes offline.
+  Each Railway environment's service subnet is a unique random `/64`, so those
+  never collide — but environments can also carry **shared infra prefixes**
+  (observed: `fd12:0:8::/64`, alongside an env-unique `/64` like
   `fd12:26cc:de40::/64`). If two projects' nodes both advertise such a prefix,
-  traffic to it lands in whichever project is primary at that moment.
+  traffic to it flows through whichever node is primary right now — and when
+  that node restarts or redeploys, it silently fails over to the *other*
+  project's node, which forwards it into its own environment, where those
+  addresses mean something different (or nothing). The result is intermittent,
+  restart-correlated weirdness that's painful to diagnose. Only the shared
+  prefix is affected: services live in the env-unique subnets, each advertised
+  by exactly one node, so skipping the shared prefix loses nothing.
 
   *Symptom:* everything in the env-unique `/64` works, but addresses in the
   shared prefix are intermittently unreachable or hit the wrong project —
@@ -133,7 +140,10 @@ Exit Nodes on the client, and all your traffic egresses via Railway.
 
   *Fix:* set `TS_SKIP_ROUTES=<the shared prefix>` on all but one node and
   redeploy. Service traffic is unaffected — services live in the env-unique
-  `/64`.
+  `/64`. (This isn't skipped by default because the shared prefixes aren't
+  documented or stable, and whether a prefix collides depends on what the
+  *other* nodes on your tailnet advertise — something a single container can't
+  know. On a one-project tailnet there is no collision and nothing to skip.)
 
 - **Dual-stack environments: don't skip the IPv4 routes.** Environments created
   after Oct 2025 resolve service names to private IPv4 (`10.x`) **and** IPv6.
