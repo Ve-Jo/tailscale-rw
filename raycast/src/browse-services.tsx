@@ -118,7 +118,15 @@ function ServiceItem({
       subtitle={hostPort}
       keywords={[group.projectName, group.envName, svc.host]}
       accessories={[
-        ...(svc.port
+        ...(svc.publicUrl
+          ? [
+              {
+                tag: { value: "public", color: Color.SecondaryText },
+                tooltip: `Also exposed publicly at ${svc.publicUrl}`,
+              },
+            ]
+          : []),
+        ...(svc.port || svc.publicUrl
           ? []
           : [
               {
@@ -140,7 +148,13 @@ function ServiceItem({
       actions={
         <ActionPanel>
           <ActionPanel.Section>
-            <Action.OpenInBrowser url={browserUrl} />
+            {svc.publicUrl && (
+              <Action.OpenInBrowser
+                title="Open Public URL"
+                url={svc.publicUrl}
+              />
+            )}
+            <Action.OpenInBrowser title="Open Private URL" url={browserUrl} />
             <Action.CopyToClipboard title="Copy Host:Port" content={hostPort} />
             <Action.CopyToClipboard
               title="Copy Host"

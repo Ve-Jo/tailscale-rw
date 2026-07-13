@@ -255,6 +255,8 @@ export interface TailnetService {
   host: string;
   port?: number;
   connectionUrl?: string;
+  /** Railway-provided public domain (service is also exposed publicly). */
+  publicUrl?: string;
   isDatabase: boolean;
   image: string | null;
   repo: string | null;
@@ -375,6 +377,9 @@ export async function loadEnvGroups(
         host,
         port: inferPort(vars, image),
         connectionUrl: findConnectionUrl(vars, privateDomain, host),
+        publicUrl: vars.RAILWAY_PUBLIC_DOMAIN
+          ? `https://${vars.RAILWAY_PUBLIC_DOMAIN}`
+          : undefined,
         isDatabase: DATABASE_IMAGE.test(image ?? ""),
         image,
         repo: inst.source?.repo ?? null,

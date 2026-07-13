@@ -20,6 +20,9 @@ connection string rewritten to the tailnet hostname.
   `PGPORT`-style variables first, then defaults for known images
   (postgres → 5432, redis → 6379, …). Unknown ports get a `port?` tag and the
   browser action falls back to port 80.
+- Services that also have a public Railway domain (`RAILWAY_PUBLIC_DOMAIN`)
+  get a `public` tag; for those `⏎` opens the public URL and the private URL
+  moves to the second action.
 
 ## Install (local development mode)
 
