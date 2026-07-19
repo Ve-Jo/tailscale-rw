@@ -180,9 +180,27 @@ else
 fi
 echo "=================================================================="
 
+# --- Optional TCP forward ------------------------------------------------------
+# Expose one tailnet destination to the Railway private network. This is useful
+# when another Railway service needs to reach a private service behind Tailscale
+# without running its own tailscaled sidecar.
+FORWARD_PID=""
+if [ -n "${TS_FORWARD_HOST:-}" ] && [ -n "${TS_FORWARD_PORT:-}" ]; then
+  FORWARD_LISTEN_PORT="${TS_FORWARD_LISTEN_PORT:-8080}"
+  socat \
+    "TCP-LISTEN:${FORWARD_LISTEN_PORT},reuseaddr,fork" \
+    "EXEC:tailscale --socket=/var/run/tailscale/tailscaled.sock nc ${TS_FORWARD_HOST} ${TS_FORWARD_PORT}" &
+  FORWARD_PID=$!
+  echo "  tcp forward:       0.0.0.0:${FORWARD_LISTEN_PORT} -> ${TS_FORWARD_HOST}:${TS_FORWARD_PORT}"
+fi
+
 # Tie the container to its daemons: if either dies, exit so Railway restarts us.
-if [ -n "$COREDNS_PID" ]; then
-  wait -n "$TAILSCALED_PID" "$COREDNS_PID"
+PIDS=("$TAILSCALED_PID")
+[ -n "$COREDNS_PID" ] && PIDS+=("$COREDNS_PID")
+[ -n "$FORWARD_PID" ] && PIDS+=("$FORWARD_PID")
+
+if [ "${#PIDS[@]}" -gt 1 ]; then
+  wait -n "${PIDS[@]}"
 else
   wait "$TAILSCALED_PID"
 fi

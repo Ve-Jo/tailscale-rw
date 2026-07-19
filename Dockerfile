@@ -10,7 +10,7 @@ ARG COREDNS_VERSION=1.12.1
 # iproute2: start.sh reads the route table to detect the private subnets.
 # coredns: only used when TS_DNS_ALIAS_SUFFIX is set (DNS suffix aliasing).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates iproute2 \
+ && apt-get install -y --no-install-recommends curl ca-certificates iproute2 socat \
  && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_amd64.tgz" \
     | tar -xz --strip-components=1 -C /usr/local/bin \
       "tailscale_${TAILSCALE_VERSION}_amd64/tailscale" \
