@@ -188,10 +188,10 @@ FORWARD_PID=""
 if [ -n "${TS_FORWARD_HOST:-}" ] && [ -n "${TS_FORWARD_PORT:-}" ]; then
   FORWARD_LISTEN_PORT="${TS_FORWARD_LISTEN_PORT:-8080}"
   socat \
-    "TCP-LISTEN:${FORWARD_LISTEN_PORT},reuseaddr,fork" \
+    "TCP6-LISTEN:${FORWARD_LISTEN_PORT},reuseaddr,fork,ipv6only=0" \
     "EXEC:tailscale --socket=/var/run/tailscale/tailscaled.sock nc ${TS_FORWARD_HOST} ${TS_FORWARD_PORT}" &
   FORWARD_PID=$!
-  echo "  tcp forward:       0.0.0.0:${FORWARD_LISTEN_PORT} -> ${TS_FORWARD_HOST}:${TS_FORWARD_PORT}"
+  echo "  tcp forward:       [::]:${FORWARD_LISTEN_PORT} -> ${TS_FORWARD_HOST}:${TS_FORWARD_PORT}"
 fi
 
 # Tie the container to its daemons: if either dies, exit so Railway restarts us.
